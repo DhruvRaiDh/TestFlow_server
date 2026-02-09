@@ -1,99 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testng-results ignored="0" total="1" passed="0" failed="0" skipped="1">
+<testng-results ignored="0" total="1" passed="1" failed="0" skipped="0">
   <reporter-output>
   </reporter-output>
-  <suite started-at="2026-01-15T14:32:47 IST" name="Command line suite" finished-at="2026-01-15T14:32:47 IST" duration-ms="34">
+  <suite started-at="2026-02-02T17:31:58 IST" name="Command line suite" finished-at="2026-02-02T17:32:35 IST" duration-ms="36796">
     <groups>
     </groups>
-    <test started-at="2026-01-15T14:32:47 IST" name="Command line test" finished-at="2026-01-15T14:32:47 IST" duration-ms="34">
-      <class name="LoginTest">
-        <test-method is-config="true" signature="setup()[pri:0, instance:LoginTest@7cbd213e]" started-at="2026-01-15T14:32:47 IST" name="setup" finished-at="2026-01-15T14:32:47 IST" duration-ms="12" status="FAIL">
-          <exception class="java.lang.NoClassDefFoundError">
-            <message>
-              <![CDATA[org/apache/hc/core5/http/ClassicHttpRequest]]>
-            </message>
-            <full-stacktrace>
-              <![CDATA[java.lang.NoClassDefFoundError: org/apache/hc/core5/http/ClassicHttpRequest
-at LoginTest.setup(LoginTest.java:38)
-at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-at java.base/java.lang.reflect.Method.invoke(Method.java:565)
-at org.testng.internal.invokers.MethodInvocationHelper.invokeMethod(MethodInvocationHelper.java:141)
-at org.testng.internal.invokers.MethodInvocationHelper.invokeMethodConsideringTimeout(MethodInvocationHelper.java:71)
-at org.testng.internal.invokers.ConfigInvoker.invokeConfigurationMethod(ConfigInvoker.java:400)
-at org.testng.internal.invokers.ConfigInvoker.invokeConfigurations(ConfigInvoker.java:333)
-at org.testng.internal.invokers.TestMethodWorker.invokeBeforeClassMethods(TestMethodWorker.java:188)
-at org.testng.internal.invokers.TestMethodWorker.run(TestMethodWorker.java:128)
-at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
-at org.testng.TestRunner.privateRun(TestRunner.java:739)
-at org.testng.TestRunner.run(TestRunner.java:614)
-at org.testng.SuiteRunner.runTest(SuiteRunner.java:421)
-at org.testng.SuiteRunner.runSequentially(SuiteRunner.java:413)
-at org.testng.SuiteRunner.privateRun(SuiteRunner.java:373)
-at org.testng.SuiteRunner.run(SuiteRunner.java:312)
-at org.testng.SuiteRunnerWorker.runSuite(SuiteRunnerWorker.java:52)
-at org.testng.SuiteRunnerWorker.run(SuiteRunnerWorker.java:95)
-at org.testng.TestNG.runSuitesSequentially(TestNG.java:1274)
-at org.testng.TestNG.runSuitesLocally(TestNG.java:1208)
-at org.testng.TestNG.runSuites(TestNG.java:1112)
-at org.testng.TestNG.run(TestNG.java:1079)
-at org.testng.TestNG.privateMain(TestNG.java:1430)
-at org.testng.TestNG.main(TestNG.java:1394)
-Caused by: java.lang.ClassNotFoundException: org.apache.hc.core5.http.ClassicHttpRequest
-at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:580)
-at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:490)
-... 24 more
-]]>
-            </full-stacktrace>
-          </exception> <!-- java.lang.NoClassDefFoundError -->
+    <test started-at="2026-02-02T17:31:58 IST" name="Command line test" finished-at="2026-02-02T17:32:35 IST" duration-ms="36796">
+      <class name="OrderOnlineRepeatChromeTest">
+        <test-method is-config="true" signature="setUp()[pri:0, instance:OrderOnlineRepeatChromeTest@262b2c86]" started-at="2026-02-02T17:31:59 IST" name="setUp" finished-at="2026-02-02T17:32:00 IST" duration-ms="1675" status="PASS">
           <reporter-output>
           </reporter-output>
-        </test-method> <!-- setup -->
-        <test-method signature="testLoginArray()[pri:0, instance:LoginTest@7cbd213e]" started-at="2026-01-15T14:32:47 IST" name="testLoginArray" finished-at="2026-01-15T14:32:47 IST" duration-ms="0" status="SKIP">
-          <exception class="java.lang.NoClassDefFoundError">
-            <message>
-              <![CDATA[org/apache/hc/core5/http/ClassicHttpRequest]]>
-            </message>
-            <full-stacktrace>
-              <![CDATA[java.lang.NoClassDefFoundError: org/apache/hc/core5/http/ClassicHttpRequest
-at LoginTest.setup(LoginTest.java:38)
-at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
-at java.base/java.lang.reflect.Method.invoke(Method.java:565)
-at org.testng.internal.invokers.MethodInvocationHelper.invokeMethod(MethodInvocationHelper.java:141)
-at org.testng.internal.invokers.MethodInvocationHelper.invokeMethodConsideringTimeout(MethodInvocationHelper.java:71)
-at org.testng.internal.invokers.ConfigInvoker.invokeConfigurationMethod(ConfigInvoker.java:400)
-at org.testng.internal.invokers.ConfigInvoker.invokeConfigurations(ConfigInvoker.java:333)
-at org.testng.internal.invokers.TestMethodWorker.invokeBeforeClassMethods(TestMethodWorker.java:188)
-at org.testng.internal.invokers.TestMethodWorker.run(TestMethodWorker.java:128)
-at java.base/java.util.ArrayList.forEach(ArrayList.java:1604)
-at org.testng.TestRunner.privateRun(TestRunner.java:739)
-at org.testng.TestRunner.run(TestRunner.java:614)
-at org.testng.SuiteRunner.runTest(SuiteRunner.java:421)
-at org.testng.SuiteRunner.runSequentially(SuiteRunner.java:413)
-at org.testng.SuiteRunner.privateRun(SuiteRunner.java:373)
-at org.testng.SuiteRunner.run(SuiteRunner.java:312)
-at org.testng.SuiteRunnerWorker.runSuite(SuiteRunnerWorker.java:52)
-at org.testng.SuiteRunnerWorker.run(SuiteRunnerWorker.java:95)
-at org.testng.TestNG.runSuitesSequentially(TestNG.java:1274)
-at org.testng.TestNG.runSuitesLocally(TestNG.java:1208)
-at org.testng.TestNG.runSuites(TestNG.java:1112)
-at org.testng.TestNG.run(TestNG.java:1079)
-at org.testng.TestNG.privateMain(TestNG.java:1430)
-at org.testng.TestNG.main(TestNG.java:1394)
-Caused by: java.lang.ClassNotFoundException: org.apache.hc.core5.http.ClassicHttpRequest
-at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:580)
-at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:490)
-... 24 more
-]]>
-            </full-stacktrace>
-          </exception> <!-- java.lang.NoClassDefFoundError -->
+        </test-method> <!-- setUp -->
+        <test-method signature="placeSingleOrder()[pri:0, instance:OrderOnlineRepeatChromeTest@262b2c86]" started-at="2026-02-02T17:32:00 IST" name="placeSingleOrder" finished-at="2026-02-02T17:32:35 IST" duration-ms="34773" status="PASS">
           <reporter-output>
           </reporter-output>
-        </test-method> <!-- testLoginArray -->
-        <test-method is-config="true" signature="teardown()[pri:0, instance:LoginTest@7cbd213e]" started-at="2026-01-15T14:32:47 IST" name="teardown" finished-at="2026-01-15T14:32:47 IST" duration-ms="0" status="SKIP">
+        </test-method> <!-- placeSingleOrder -->
+        <test-method is-config="true" signature="tearDown()[pri:0, instance:OrderOnlineRepeatChromeTest@262b2c86]" started-at="2026-02-02T17:32:35 IST" name="tearDown" finished-at="2026-02-02T17:32:35 IST" duration-ms="318" status="PASS">
           <reporter-output>
           </reporter-output>
-        </test-method> <!-- teardown -->
-      </class> <!-- LoginTest -->
+        </test-method> <!-- tearDown -->
+      </class> <!-- OrderOnlineRepeatChromeTest -->
     </test> <!-- Command line test -->
   </suite> <!-- Command line suite -->
 </testng-results>

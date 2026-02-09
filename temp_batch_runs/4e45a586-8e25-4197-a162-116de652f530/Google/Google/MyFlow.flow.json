@@ -1,0 +1,118 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "data": {
+        "action": "navigate",
+        "params": {
+          "url": "https://www.wikipedia.org"
+        },
+        "label": "Navigate to Wikipedia"
+      },
+      "type": "default",
+      "width": 150,
+      "height": 40
+    },
+    {
+      "id": "2",
+      "position": {
+        "x": 100,
+        "y": 200
+      },
+      "data": {
+        "action": "type",
+        "params": {
+          "selector": "input#searchInput",
+          "value": "Playwright"
+        },
+        "label": "Type 'Playwright'"
+      },
+      "type": "default",
+      "width": 150,
+      "height": 40,
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "3",
+      "position": {
+        "x": 100,
+        "y": 300
+      },
+      "data": {
+        "action": "click",
+        "params": {
+          "selector": "button.pure-button"
+        },
+        "label": "Click Search Button"
+      },
+      "type": "default",
+      "width": 150,
+      "height": 40,
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "4",
+      "position": {
+        "x": 100,
+        "y": 400
+      },
+      "data": {
+        "action": "wait",
+        "params": {
+          "value": "2000"
+        },
+        "label": "Wait 2000ms"
+      },
+      "type": "default",
+      "width": 150,
+      "height": 40,
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "5",
+      "position": {
+        "x": 100,
+        "y": 500
+      },
+      "data": {
+        "action": "screenshot",
+        "params": {},
+        "label": "Take Screenshot"
+      },
+      "type": "default",
+      "width": 150,
+      "height": 40,
+      "selected": false,
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1-2",
+      "source": "1",
+      "target": "2"
+    },
+    {
+      "id": "e2-3",
+      "source": "2",
+      "target": "3"
+    },
+    {
+      "id": "e3-4",
+      "source": "3",
+      "target": "4"
+    },
+    {
+      "id": "e4-5",
+      "source": "4",
+      "target": "5"
+    }
+  ]
+}
