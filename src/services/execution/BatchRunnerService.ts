@@ -232,11 +232,28 @@ export class BatchRunnerService {
 
                         const child = spawn(command, [], { shell: true, env: envVars });
 
+                        // ✅ CRITICAL FIX: Capture stdout (normal test output)
+                        child.stdout?.on('data', (data) => {
+                            const output = data.toString();
+                            log(output); // This calls testRunService.appendLog() which saves to DB
+                        });
+
+                        // ✅ CRITICAL FIX: Capture stderr (errors and warnings)
+                        child.stderr?.on('data', (data) => {
+                            const error = data.toString();
+                            log(`[ERROR] ${error}`); // Save errors to DB as well
+                        });
+
+                        // ✅ Handle process errors
+                        child.on('error', (error) => {
+                            log(`[PROCESS ERROR] ${error.message}`);
+                        });
+
                         child.on('close', async (code) => {
                             log(`[BatchRunner] Playwright finished with code ${code}`);
                             // Once EVERYTHING is done:
                             await testRunService.updateRun(runId, projectId, {
-                                status: 'completed',
+                                status: code === 0 ? 'completed' : 'failed', // ✅ Set status based on exit code
                                 endTime: new Date().toISOString(),
                                 results: customResults // Note: Missing Playwright results in this array, but good for Java/Python
                             });

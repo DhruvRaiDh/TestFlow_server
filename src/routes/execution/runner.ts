@@ -152,6 +152,23 @@ router.get('/runs/:projectId', async (req, res) => {
     }
 });
 
+// Get TestNG Results for a Specific Run
+router.get('/run/:runId/testng-results', async (req, res) => {
+    try {
+        const { runId } = req.params;
+        console.log(`[Runner] GET /run/${runId}/testng-results`);
+
+        const { testNGParserService } = await import('../../services/TestNGParserService');
+        const results = await testNGParserService.getResultsForRun(runId);
+
+        res.json(results);
+    } catch (error: any) {
+        console.error(`[Runner] Error getting TestNG results:`, error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 // Get Details of a Specific Run
 router.get('/run/:runId', async (req, res) => {
     console.log(`[Runner] GET /run/${req.params.runId} initiated`);
