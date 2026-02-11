@@ -2,11 +2,18 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { testRunService } from '../persistence/TestRunService';
 
 export interface ExecutionResult {
     runId: string;
     logs: string[];
     exitCode: number | null;
+}
+
+export interface ExecutionOptions {
+    runId?: string;
+    projectId?: string;
+    streamLogs?: boolean;
 }
 
 export class CodeExecutorService {
@@ -19,7 +26,7 @@ export class CodeExecutorService {
         }
     }
 
-    async executeCode(content: string, language: string): Promise<ExecutionResult> {
+    async executeCode(content: string, language: string, options?: ExecutionOptions): Promise<ExecutionResult> {
         const runId = uuidv4();
         let fileName = `${runId}.txt`;
         let command = '';
@@ -105,8 +112,27 @@ export class CodeExecutorService {
                         env,
                     });
 
-                    process.stdout.on('data', (data) => logs.push(data.toString()));
-                    process.stderr.on('data', (data) => logs.push(`[Details] ${data.toString()}`));
+                    process.stdout.on('data', (data) => {
+                        const line = data.toString();
+                        logs.push(line);
+
+                        // Stream to database in real-time if enabled
+                        if (options?.streamLogs && options.runId && options.projectId) {
+                            testRunService.appendLog(options.runId, options.projectId, line, 'info')
+                                .catch(err => console.error('[CodeExecutor] Failed to append stdout log:', err));
+                        }
+                    });
+
+                    process.stderr.on('data', (data) => {
+                        const line = `[Details] ${data.toString()}`;
+                        logs.push(line);
+
+                        // Stream errors to database in real-time
+                        if (options?.streamLogs && options.runId && options.projectId) {
+                            testRunService.appendLog(options.runId, options.projectId, line, 'error')
+                                .catch(err => console.error('[CodeExecutor] Failed to append stderr log:', err));
+                        }
+                    });
 
                     process.on('close', (code) => {
                         try {
@@ -145,13 +171,25 @@ export class CodeExecutorService {
             });
 
             process.stdout.on('data', (data) => {
-                logs.push(data.toString());
+                const line = data.toString();
+                logs.push(line);
+
+                // Stream to database in real-time if enabled
+                if (options?.streamLogs && options.runId && options.projectId) {
+                    testRunService.appendLog(options.runId, options.projectId, line, 'info')
+                        .catch(err => console.error('[CodeExecutor] Failed to append stdout log:', err));
+                }
             });
 
             process.stderr.on('data', (data) => {
-                // Some tools (Playwright) print info to stderr, distinguishing isn't always "Error"
-                // But for now we log it.
-                logs.push(`[Details] ${data.toString()}`);
+                const line = data.toString();
+                logs.push(line);
+
+                // Stream errors to database in real-time
+                if (options?.streamLogs && options.runId && options.projectId) {
+                    testRunService.appendLog(options.runId, options.projectId, line, 'error')
+                        .catch(err => console.error('[CodeExecutor] Failed to append stderr log:', err));
+                }
             });
 
             process.on('close', (code) => {

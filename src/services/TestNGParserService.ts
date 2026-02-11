@@ -45,7 +45,7 @@ export class TestNGParserService {
 
         try {
             const xmlContent = fs.readFileSync(xmlPath, 'utf-8');
-            const result = await parseXML(xmlContent);
+            const result = await parseXML(xmlContent) as any;
 
             // Extract test suite data
             const testngResults = result['testng-results'];

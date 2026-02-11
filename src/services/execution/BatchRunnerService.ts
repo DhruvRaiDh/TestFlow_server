@@ -143,7 +143,14 @@ export class BatchRunnerService {
                 await Promise.all(javaFiles.map(async (f) => {
                     try {
                         log(`Executing Java: ${path.basename(f.path)}`);
-                        const result = await codeExecutorService.executeCode(f.content, 'java');
+
+                        // ✅ Enable real-time log streaming
+                        const result = await codeExecutorService.executeCode(f.content, 'java', {
+                            runId,
+                            projectId,
+                            streamLogs: true
+                        });
+
                         customResults.push({
                             file: path.basename(f.path),
                             status: result.exitCode === 0 ? 'passed' : 'failed',
@@ -163,7 +170,14 @@ export class BatchRunnerService {
                 await Promise.all(pythonFiles.map(async (f) => {
                     try {
                         log(`Executing Python: ${path.basename(f.path)}`);
-                        const result = await codeExecutorService.executeCode(f.content, 'python');
+
+                        // ✅ Enable real-time log streaming
+                        const result = await codeExecutorService.executeCode(f.content, 'python', {
+                            runId,
+                            projectId,
+                            streamLogs: true
+                        });
+
                         customResults.push({
                             file: path.basename(f.path),
                             status: result.exitCode === 0 ? 'passed' : 'failed',
