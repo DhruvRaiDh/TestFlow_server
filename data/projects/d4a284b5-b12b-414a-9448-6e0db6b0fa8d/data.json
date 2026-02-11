@@ -659,7 +659,7 @@
           "module": "Location selection module",
           "severity": "Medium",
           "priority": "P3",
-          "status": "Open",
+          "status": "Resolved",
           "stepsToReproduce": "",
           "expectedBehavior": "",
           "actualBehavior": "",
@@ -669,7 +669,7 @@
           "environment": "Production",
           "id": "1767842930391d7t7gi0n8",
           "createdAt": "2026-01-08T03:28:50.391Z",
-          "updatedAt": "2026-01-08T03:28:50.391Z"
+          "updatedAt": "2026-02-11T04:33:03.227Z"
         },
         {
           "bugId": "BUG-799363",
@@ -688,7 +688,7 @@
           "environment": "Production",
           "id": "1767842930391ctu0pu4ed",
           "createdAt": "2026-01-08T03:28:50.391Z",
-          "updatedAt": "2026-01-08T03:28:50.391Z"
+          "updatedAt": "2026-02-11T04:33:03.973Z"
         }
       ]
     },
@@ -720,7 +720,7 @@
           "module": "Order Online Page",
           "severity": "High",
           "priority": "P1",
-          "status": "In Progress",
+          "status": "Resolved",
           "stepsToReproduce": "",
           "expectedBehavior": "",
           "actualBehavior": "",
@@ -730,7 +730,7 @@
           "environment": "Production",
           "id": "1767842938648ssy5w8rmd",
           "createdAt": "2026-01-08T03:28:58.648Z",
-          "updatedAt": "2026-01-08T03:28:58.648Z"
+          "updatedAt": "2026-02-11T04:33:07.437Z"
         }
       ]
     }
