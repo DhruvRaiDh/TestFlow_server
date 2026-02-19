@@ -26,10 +26,14 @@
       "email": "21bmiit087@gmail.com",
       "role": "user",
       "createdAt": "2026-01-15T06:38:26.003Z",
-      "updatedAt": "2026-01-23T10:01:47.933Z",
+      "updatedAt": "2026-02-19T04:49:12.352Z",
       "displayName": "Dhruv ",
       "bio": "A",
-      "photoURL": ""
+      "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocIvXIbEvgou8_GE_wEIhGbEFm5P5VOR-nvJT1UQHUC31-Yn_xg=s360-c-no",
+      "settings": {
+        "statusChanges": true,
+        "marketingEmails": true
+      }
     }
   ]
 }

@@ -8,15 +8,13 @@ import path from 'path';
 import { recorderService } from './services/execution/RecorderService';
 import { schedulerService } from './services/execution/SchedulerService';
 
-// Import Routes (checking named vs default exports)
-// Import Routes (checking named vs default exports)
+// Import Routes
 import { scriptRoutes } from './routes/persistence/scripts';
 import { recorderRoutes } from './routes/execution/recorder';
 import { projectRoutes } from './routes/persistence/projects';
 import { visualTestRouter } from './routes/analysis/visual-tests';
 import testDataRoutes from './routes/persistence/test-data';
 import { schedulerRouter } from './routes/execution/scheduler';
-
 import { userRoutes } from './routes/persistence/user';
 import { gitRoutes } from './routes/integration/git';
 import { apiLabRouter } from './routes/integration/api-lab';
@@ -28,9 +26,9 @@ import { fileSystemRoutes } from './routes/persistence/filesystem';
 import aiAnalyticsRoutes from './routes/ai/analytics';
 import { suitesRouter } from './routes/persistence/suites';
 import performanceRouter from './routes/execution/performance';
-
 import { runsRouter } from './routes/execution/runs';
-
+import { mobileTestRoutes } from './routes/execution/mobile-tests';
+import { visionStudioRoutes } from './routes/execution/vision-studio';
 
 dotenv.config();
 
@@ -51,7 +49,6 @@ app.use(express.json());
 
 // Request Logging Middleware
 app.use((req, res, next) => {
-    // console.log(`[API Request] ${req.method} ${req.url}`); // Removed duplicate
     const start = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - start;
@@ -73,52 +70,80 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/auth', authRouter); // Moved UP: Public Auth Routes
+app.use('/api/auth', authRouter);
 
 // Protected Routes
-app.use('/api', authMiddleware); // Protect all remaining /api routes
+app.use('/api', authMiddleware);
 
 // Routes Mapping
-app.use('/api/tests', scriptRoutes); // Mapped to scripts
+app.use('/api/mobile-tests', mobileTestRoutes);
+app.use('/api/vision-studio', visionStudioRoutes);
+app.use('/api/tests', scriptRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/scripts', scriptRoutes);
 app.use('/api/runner', runnerRoutes);
-app.use('/api/visual', visualTestRouter); // Kept original visualTestRouter
-// app.use('/api/auth', authRouter); // Moved down -> up
-app.use('/api/user', userRoutes); // Added from the instruction's code edit
-app.use('/api/fs', fileSystemRoutes); // Added from the instruction's code edit
-app.use('/api/ai', aiRouter); // Mounted AI Core Routes
-app.use('/api/ai-analytics', aiAnalyticsRoutes); // Registered ai-analytics routes
-
-// Original routes that were not explicitly in the provided edit block but should remain
+app.use('/api/visual', visualTestRouter);
+app.use('/api/user', userRoutes);
+app.use('/api/fs', fileSystemRoutes);
+app.use('/api/ai', aiRouter);
+app.use('/api/ai-analytics', aiAnalyticsRoutes);
 app.use('/api/recorder', recorderRoutes);
-// Reports are handled within recorderRoutes or projectRoutes for now
-// app.use('/api/reports', reportRoutes);
 app.use('/api/test-data', testDataRoutes);
 app.use('/api/schedules', schedulerRouter);
-
-// app.use('/api/user', userRoutes); // Removed Duplicate
 app.use('/api/git', gitRoutes);
 app.use('/api/lab', apiLabRouter);
 app.use('/api/suites', suitesRouter);
-app.use('/api/suites', suitesRouter);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/performance', performanceRouter);
-
 app.use('/api/runs', runsRouter);
 
-
-
-// Initialize Scheduler
-recorderService.setSocket(io); // Initialize Recorder Socket
-schedulerService.init().catch(err => console.error("Scheduler Init Failed:", err));
-
-// Initialize Recorder Socket
+// Initialize Services
 recorderService.setSocket(io);
+schedulerService.init().catch(err => console.error("Scheduler Init Failed:", err));
 
 // Initialize TestRunner Socket for real-time logs
 import { testRunnerService } from './services/execution/TestRunnerService';
+import { visionVisualService } from './services/execution/VisionVisualService';
+import { visionRecorderService } from './services/execution/VisionRecorderService';
+import { visionActionService } from './services/execution/VisionActionService';
+
 testRunnerService.setSocketIO(io);
+
+// Vision Studio Real-time Handlers
+io.on('connection', (socket) => {
+    socket.on('vision:stream:start', (serial) => {
+        visionVisualService.startStreaming(serial);
+        visionVisualService.on('frame', (data) => {
+            if (data.serial === serial) {
+                socket.emit('vision:frame', data.base64);
+            }
+        });
+    });
+
+    socket.on('vision:record:start', (serial) => {
+        visionRecorderService.startRecording(serial);
+
+        // Listen for raw events to update UI line log
+        visionRecorderService.on('event', (event) => {
+            if (event.serial === serial) {
+                socket.emit('vision:raw-event', event);
+                // Feed to action recognizer
+                visionActionService.processEvent(serial, event);
+            }
+        });
+
+        // Listen for logical actions (CLICK, SWIPE)
+        visionActionService.on('action', (data) => {
+            if (data.serial === serial) {
+                socket.emit('vision:action', data.step);
+            }
+        });
+    });
+
+    socket.on('disconnect', () => {
+        // Cleanup could be added here
+    });
+});
 
 httpServer.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`✅ Test Management Backend running on port ${PORT}`);
