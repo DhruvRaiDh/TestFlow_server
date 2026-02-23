@@ -204,6 +204,7 @@ export class GenAIService {
             const completion = await openai.chat.completions.create({
                 messages: [{ role: "user", content: prompt }],
                 model: config.model || (config.provider === 'groq' ? 'llama3-70b-8192' : "gpt-4o"),
+                max_tokens: 16000,
             });
 
             return completion.choices[0].message.content || "";
@@ -365,79 +366,40 @@ export class GenAIService {
         console.log("--> BACKEND: GenAIService generating BULK test cases, prompt len:", prompt.length);
 
         const systemPrompt = `
-        CRITICAL REQUIREMENT: Generate MINIMUM 70 test cases, MAXIMUM 100 test cases.
+        CRITICAL REQUIREMENT: Generate EXACTLY 50 test cases. No more, no less.
         
         GOAL: Create comprehensive test coverage for the described module/feature.
         
-        COVERAGE REQUIREMENTS:
-        1. Happy Path Scenarios (35-40 test cases):
-           - Standard user flows
-           - Valid inputs and expected behaviors
-           - Common use cases
-           - Different user roles (admin, user, guest)
-        
-        2. Edge Cases (15-20 test cases):
-           - Boundary values (min, max, zero, negative)
-           - Empty/null inputs
-           - Special characters in inputs
-           - Large data sets
-           - Concurrent operations
-        
-        3. Negative Scenarios (15-20 test cases):
-           - Invalid inputs
-           - Unauthorized access attempts
-           - Missing required fields
-           - Incorrect data types
-           - Expired sessions
-        
-        4. Error Handling (10-15 test cases):
-           - Network failures
-           - Server errors
-           - Database connection issues
-           - Timeout scenarios
-           - Invalid API responses
-        
-        5. Additional Scenarios (5-10 test cases):
-           - Performance edge cases
-           - Browser compatibility
-           - Mobile responsiveness
-           - Accessibility requirements
+        COVERAGE REQUIREMENTS (must total exactly 50):
+        1. Happy Path Scenarios (20 test cases)
+        2. Edge Cases (10 test cases)
+        3. Negative Scenarios (10 test cases)
+        4. Error Handling (7 test cases)
+        5. Additional Scenarios (3 test cases)
         
         ID GENERATION RULES:
-        1. Analyze the user's input to determine the Module Name and Sub-Module.
-           - If user says "Login -> Forgot Password", Module is "Forgot Password".
-           - Use a short 3-4 letter uppercase prefix for the ID (e.g., "Login" -> "LOG", "Payments" -> "PAY").
-        2. Generate SEQUENTIAL Test Case IDs (e.g., LOG-001, LOG-002, LOG-003, ..., LOG-075).
-           - Do NOT use static IDs like "TC_AI_AUTO_01".
+        1. Analyze the user's input to determine the Module Name.
+           - Use a short 3-4 letter uppercase prefix (e.g., "Login" -> "LOG", "Payments" -> "PAY").
+        2. Generate SEQUENTIAL IDs from 001 to 050 (e.g., LOG-001 ... LOG-050).
            - Do NOT repeat IDs.
-           - Ensure IDs go from 001 to at least 070.
 
         OUTPUT FORMAT:
-        You must strictly output a VALID JSON ARRAY of objects. 
-        Do not include markdown formatting, backticks, or any explanation text outside the JSON.
+        Output a VALID JSON ARRAY of exactly 50 objects. No markdown, no backticks, no text outside JSON.
         
-        Each object in the array must match:
+        Each object must match:
         {
-            "module": "Inferred Module Name (e.g. 'Login' or 'Payments > Credit Card')",
-            "testCaseId": "Dynamic ID (e.g. LOG-001)", 
-            "testScenario": "Clear, concise summary of the test (can be multi-line if needed)",
-            "testCaseDescription": "Detailed purpose and what this test validates",
+            "module": "Inferred Module Name",
+            "testCaseId": "Dynamic ID (e.g. LOG-001)",
+            "testScenario": "Clear one-line summary",
+            "testCaseDescription": "Detailed purpose of the test",
             "preConditions": "Numbered list (e.g. 1. User is logged in\\n2. Database is accessible)",
-            "testSteps": "Numbered list (e.g. 1. Navigate to login page\\n2. Enter credentials\\n3. Click submit)",
-            "testData": "Input data required (e.g. username: test@example.com, password: Test123!)",
-            "expectedResult": "Expected outcome after test execution",
+            "testSteps": "Numbered list (e.g. 1. Navigate to page\\n2. Enter data\\n3. Click submit)",
+            "testData": "Required input data",
+            "expectedResult": "Expected outcome",
             "actualResult": "",
             "status": "Pending",
             "comments": "Auto-generated - Type: [Happy Path/Edge Case/Negative/Error Handling]"
         }
-
-        IMPORTANT REMINDERS:
-        - Generate AT LEAST 70 test cases
-        - Be creative and thorough
-        - Think of every possible scenario
-        - Include variety in test types
-        - Ensure sequential IDs
-        - Test scenarios can be multi-line for clarity
 
         User Flow Description: "${prompt}"
         `;

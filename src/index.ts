@@ -27,8 +27,6 @@ import aiAnalyticsRoutes from './routes/ai/analytics';
 import { suitesRouter } from './routes/persistence/suites';
 import performanceRouter from './routes/execution/performance';
 import { runsRouter } from './routes/execution/runs';
-import { mobileTestRoutes } from './routes/execution/mobile-tests';
-import { visionStudioRoutes } from './routes/execution/vision-studio';
 
 dotenv.config();
 
@@ -76,8 +74,6 @@ app.use('/api/auth', authRouter);
 app.use('/api', authMiddleware);
 
 // Routes Mapping
-app.use('/api/mobile-tests', mobileTestRoutes);
-app.use('/api/vision-studio', visionStudioRoutes);
 app.use('/api/tests', scriptRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/scripts', scriptRoutes);
@@ -103,45 +99,14 @@ schedulerService.init().catch(err => console.error("Scheduler Init Failed:", err
 
 // Initialize TestRunner Socket for real-time logs
 import { testRunnerService } from './services/execution/TestRunnerService';
-import { visionVisualService } from './services/execution/VisionVisualService';
-import { visionRecorderService } from './services/execution/VisionRecorderService';
-import { visionActionService } from './services/execution/VisionActionService';
-
 testRunnerService.setSocketIO(io);
 
-// Vision Studio Real-time Handlers
+// Socket.io Handlers
 io.on('connection', (socket) => {
-    socket.on('vision:stream:start', (serial) => {
-        visionVisualService.startStreaming(serial);
-        visionVisualService.on('frame', (data) => {
-            if (data.serial === serial) {
-                socket.emit('vision:frame', data.base64);
-            }
-        });
-    });
-
-    socket.on('vision:record:start', (serial) => {
-        visionRecorderService.startRecording(serial);
-
-        // Listen for raw events to update UI line log
-        visionRecorderService.on('event', (event) => {
-            if (event.serial === serial) {
-                socket.emit('vision:raw-event', event);
-                // Feed to action recognizer
-                visionActionService.processEvent(serial, event);
-            }
-        });
-
-        // Listen for logical actions (CLICK, SWIPE)
-        visionActionService.on('action', (data) => {
-            if (data.serial === serial) {
-                socket.emit('vision:action', data.step);
-            }
-        });
-    });
+    console.log(`[Socket] Client connected: ${socket.id}`);
 
     socket.on('disconnect', () => {
-        // Cleanup could be added here
+        console.log(`[Socket] Client disconnected: ${socket.id}`);
     });
 });
 
