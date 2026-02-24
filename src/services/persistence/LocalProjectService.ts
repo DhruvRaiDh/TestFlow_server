@@ -368,13 +368,22 @@ export class LocalProjectService {
     }
 
     async deleteProjectPage(projectId: string, pageId: string, userId: string): Promise<void> {
-        const data = await this.readProjectData(projectId);
-        const initialLength = data.customPages.length;
-        data.customPages = data.customPages.filter(p => p.id !== pageId);
+        await this.updateProjectData(projectId, (data) => {
+            // Find the page before removing it so we can get its date
+            const pageToDelete = data.customPages.find(p => p.id === pageId);
 
-        if (data.customPages.length !== initialLength) {
-            await this.writeProjectData(projectId, data);
-        }
+            if (!pageToDelete) return; // Page not found, nothing to do (idempotent)
+
+            // Remove the page tab
+            data.customPages = data.customPages.filter(p => p.id !== pageId);
+
+            // Only remove dailyData if no other remaining page still references the same date.
+            // This guards against any future scenario where two pages share a date.
+            const dateStillInUse = data.customPages.some(p => p.date === pageToDelete.date);
+            if (!dateStillInUse) {
+                data.dailyData = data.dailyData.filter(d => d.date !== pageToDelete.date);
+            }
+        });
     }
 
     async getDailyData(projectId: string, userId: string, date?: string): Promise<any[]> {
