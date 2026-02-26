@@ -3,6 +3,19 @@ import { localProjectService } from './LocalProjectService';
 
 export class UnifiedProjectService {
 
+    /**
+     * Normalize a project record coming from Firestore.
+     * Firestore stores both `userId` (query field) and `user_id` (our local standard).
+     * This strips `userId` and ensures `user_id` is set so local JSON stays clean.
+     */
+    private normalizeProject(raw: any, userId: string): Project {
+        const { userId: _drop, ...rest } = raw;  // drop the legacy camelCase field
+        return {
+            ...rest,
+            user_id: rest.user_id || userId,     // always ensure user_id is set
+        } as Project;
+    }
+
     // --- Reads (Primary: Local) ---
 
     async getAllProjects(userId: string): Promise<Project[]> {
@@ -49,18 +62,23 @@ export class UnifiedProjectService {
 
     // --- Writes (Local First + Background Remote Sync) ---
 
-    async createProject(name: string, description: string, userId: string): Promise<Project> {
+    async createProject(name: string, description: string, userId: string, orgId?: string | null): Promise<Project> {
         // 1. Create Local (Immediate)
-        // We generate ID here ensure consistency
         const id = crypto.randomUUID();
-        const project = await localProjectService.createProject(name, description, userId, id);
+        let project = await localProjectService.createProject(name, description, userId, id);
 
-        // 2. Sync to Remote (Background)
-        remoteService.createProject(name, description, userId, id).catch(e =>
-            console.error('[Unified] Background Remote Create Failed:', e)
-        );
+        // 2. If org assigned, persist via update and attach to return object
+        if (orgId !== undefined && orgId !== null) {
+            await localProjectService.updateProject(id, { orgId } as any, userId);
+            project = { ...project, orgId } as any;
+        }
 
-        return project;
+        // 3. Sync to Remote (Background)
+        remoteService.createProject(name, description, userId, id).then(async () => {
+            if (orgId) await remoteService.updateProject(id, { orgId } as any, userId);
+        }).catch(e => console.error('[Unified] Background Remote Create Failed:', e));
+
+        return project as Project;
     }
 
     async updateProject(id: string, updates: Partial<Project>, userId: string): Promise<Project> {
@@ -165,10 +183,9 @@ export class UnifiedProjectService {
             for (const rProj of remoteProjects) {
                 const lProj = localProjects.find(p => p.id === rProj.id);
                 if (!lProj) {
-                    console.log(`[Unified] Pulling remote project to local: ${rProj.name}`);
-                    await localProjectService.createProject(rProj.name, rProj.description, userId, rProj.id);
-                    // TODO: Pull sub-collections (scripts, runs, etc.)?
-                    // For now, project structure is minimal.
+                    const normalized = this.normalizeProject(rProj, userId);
+                    console.log(`[Unified] Pulling remote project to local: ${normalized.name}`);
+                    await localProjectService.createProject(normalized.name, normalized.description, userId, normalized.id);
                 }
                 // else: Determine which is newer? relying on "last write wins" or just pushing local changes below.
             }
@@ -181,6 +198,16 @@ export class UnifiedProjectService {
                     console.log(`[Unified] Pushing local project to remote: ${localProj.name}`);
                     // @ts-ignore
                     remoteProj = await remoteService.createProject(localProj.name, localProj.description, userId, localProj.id);
+                }
+
+                // 1b. Sync orgId field — push local value to Firestore if different
+                // (Covers the case where user assigns a project to an org locally)
+                const localOrgId = (localProj as any).orgId ?? null;
+                const remoteOrgId = remoteProj ? (remoteProj as any).orgId ?? null : null;
+                if (localOrgId !== remoteOrgId) {
+                    console.log(`[Unified] Syncing orgId for "${localProj.name}": ${remoteOrgId} → ${localOrgId}`);
+                    remoteService.updateProject(localProj.id, { orgId: localOrgId } as any, userId)
+                        .catch(e => console.error(`[Unified] orgId sync failed for ${localProj.id}:`, e));
                 }
 
                 // 2. Sync Scripts

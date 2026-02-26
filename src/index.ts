@@ -27,6 +27,7 @@ import aiAnalyticsRoutes from './routes/ai/analytics';
 import { suitesRouter } from './routes/persistence/suites';
 import performanceRouter from './routes/execution/performance';
 import { runsRouter } from './routes/execution/runs';
+import { organizationRoutes } from './routes/persistence/organizations';
 
 dotenv.config();
 
@@ -92,6 +93,7 @@ app.use('/api/suites', suitesRouter);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/performance', performanceRouter);
 app.use('/api/runs', runsRouter);
+app.use('/api/organizations', organizationRoutes);
 
 // Initialize Services
 recorderService.setSocket(io);

@@ -7,6 +7,7 @@ export interface Project {
     description: string;
     user_id?: string;
     userId?: string; // Handle both cases
+    orgId?: string | null; // Optional organization this project belongs to
     createdAt: string;
     updatedAt: string;
 }

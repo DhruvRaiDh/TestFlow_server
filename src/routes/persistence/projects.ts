@@ -23,13 +23,13 @@ router.post('/', async (req, res) => {
     const userId = (req as any).user?.uid;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { name, description } = req.body;
+    const { name, description, orgId } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Project name is required' });
     }
 
-    const newProject = await projectService.createProject(name, description, userId);
+    const newProject = await projectService.createProject(name, description, userId, orgId);
     res.status(201).json(newProject);
   } catch (error) {
     console.error('Error creating project:', error);
@@ -64,9 +64,13 @@ router.put('/:id', async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name, description, orgId } = req.body;
 
-    const updatedProject = await projectService.updateProject(id, { name, description }, userId);
+    const updatedProject = await projectService.updateProject(
+      id,
+      { name, description, ...(orgId !== undefined ? { orgId: orgId || null } : {}) },
+      userId
+    );
     res.json(updatedProject);
   } catch (error) {
     console.error('Error updating project:', error);
