@@ -64,19 +64,25 @@ router.put('/:id', async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { id } = req.params;
-    const { name, description, orgId } = req.body;
 
-    const updatedProject = await projectService.updateProject(
-      id,
-      { name, description, ...(orgId !== undefined ? { orgId: orgId || null } : {}) },
-      userId
-    );
+    // Only include fields that were explicitly sent — never overwrite with undefined
+    const updates: Record<string, any> = {};
+    if (req.body.name !== undefined) updates.name = req.body.name;
+    if (req.body.description !== undefined) updates.description = req.body.description;
+    if (req.body.orgId !== undefined) updates.orgId = req.body.orgId || null;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const updatedProject = await projectService.updateProject(id, updates as any, userId);
     res.json(updatedProject);
   } catch (error) {
     console.error('Error updating project:', error);
     res.status(500).json({ error: 'Failed to update project' });
   }
 });
+
 
 // Delete project
 router.delete('/:id', async (req, res) => {
