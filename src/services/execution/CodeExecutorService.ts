@@ -45,8 +45,10 @@ export class CodeExecutorService {
 
                 // Playwright test files: use `npx playwright test` runner
                 if (content.includes('@playwright/test') || content.includes('playwright/test')) {
+                    // Pass just the filename — playwright.config.ts sets testDir to temp_execution/
+                    const playwrightConfig = path.join(path.join(__dirname, '../../../../'), 'playwright.config.ts');
                     command = 'npx';
-                    args = ['playwright', 'test', filePath, '--reporter=list'];
+                    args = ['playwright', 'test', fileName, '--config', playwrightConfig, '--reporter=list'];
                     // Mocha tests
                 } else if (content.includes('describe(') || content.includes('it(')) {
                     command = 'npx';
