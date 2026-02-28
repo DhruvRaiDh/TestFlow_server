@@ -7,6 +7,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { recorderService } from './services/execution/RecorderService';
 import { schedulerService } from './services/execution/SchedulerService';
+import { testLabRouter } from './modules/test-lab/routes';
+import { testLabRecorderService } from './modules/test-lab/services/RecorderService';
 
 // Import Routes
 import { scriptRoutes } from './routes/persistence/scripts';
@@ -94,9 +96,11 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/performance', performanceRouter);
 app.use('/api/runs', runsRouter);
 app.use('/api/organizations', organizationRoutes);
+app.use('/api/test-lab', testLabRouter); // ← Test Lab Module
 
 // Initialize Services
 recorderService.setSocket(io);
+testLabRecorderService.setSocket(io); // ← Test Lab Recorder
 schedulerService.init().catch(err => console.error("Scheduler Init Failed:", err));
 
 // Initialize TestRunner Socket for real-time logs

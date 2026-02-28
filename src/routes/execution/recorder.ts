@@ -103,21 +103,23 @@ recorderRoutes.delete('/:id', async (req, res) => {
     }
 });
 
+
 recorderRoutes.get('/export/:id/:format', async (req, res) => {
     try {
         const { id, format } = req.params;
         const { projectId, userId } = req.query;
-        // Fallback to header or request user (if auth middleware used)
         const uid = (userId as string) || (req.headers['x-user-id'] as string) || (req as any).user?.uid;
 
-        // Pass projectId if available (not currently used by exportScript but good practice to add later)
-        // For now, rely on System Scan fallback.
-        const result = await recorderService.exportScript(id, format as 'side' | 'java' | 'python', uid);
+        const result = await recorderService.exportScript(id, format as 'side' | 'java' | 'python' | 'playwright-ts', uid);
 
         if (format === 'side') {
             res.header('Content-Type', 'application/json');
             res.attachment(`${id}.side`);
             res.send(JSON.stringify(result, null, 2));
+        } else if (format === 'playwright-ts') {
+            res.header('Content-Type', 'text/plain');
+            res.attachment(`${id}.spec.ts`);
+            res.send(result);
         } else {
             res.header('Content-Type', 'text/plain');
             res.attachment(`${id}.${format === 'python' ? 'py' : 'java'}`);
@@ -127,3 +129,45 @@ recorderRoutes.get('/export/:id/:format', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// POST /api/recorder/save-to-studio — convert recorded script to Playwright TS and save to Dev Studio filesystem
+recorderRoutes.post('/save-to-studio', async (req, res) => {
+    try {
+        const { scriptId, projectId, parentId, userId } = req.body;
+        const uid = userId || (req as any).user?.uid;
+
+        // Get script
+        const scripts = await recorderService.getScripts(projectId, uid);
+        const script = scripts.find((s: any) => s.id === scriptId);
+        if (!script) return res.status(404).json({ error: 'Script not found' });
+
+        // Generate Playwright TS
+        const content = recorderService.generatePlaywrightTs(script);
+
+        // Save to Dev Studio filesystem via fileSystemService
+        const { fileSystemService } = await import('../../services/persistence/FileSystemService');
+        const fileName = `${script.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.spec.ts`;
+
+        // Check if file already exists
+        const exists = await fileSystemService.checkExists(projectId, parentId || null, fileName);
+        if (exists) {
+            return res.status(409).json({ error: `File "${fileName}" already exists in Dev Studio.` });
+        }
+
+        const node = await fileSystemService.createNode({
+            projectId,
+            userId: uid || 'system',
+            parentId: parentId || null,
+            name: fileName,
+            type: 'file',
+            language: 'typescript'
+        });
+
+        await fileSystemService.updateContent(node.id, content, uid || 'system');
+
+        res.json({ success: true, fileId: node.id, fileName });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+

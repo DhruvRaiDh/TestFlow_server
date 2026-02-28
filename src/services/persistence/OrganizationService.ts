@@ -59,6 +59,9 @@ export class OrganizationService {
             website: orgData.website || '',
             industry: orgData.industry || '',
             location: orgData.location || '',
+            phone: orgData.phone || '',
+            coverFrom: orgData.coverFrom || '',
+            coverTo: orgData.coverTo || '',
             createdAt: now,
             updatedAt: now,
         };

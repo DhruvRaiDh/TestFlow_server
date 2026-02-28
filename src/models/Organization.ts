@@ -12,6 +12,9 @@ export interface Organization {
     website?: string;
     industry?: string;
     location?: string;
+    phone?: string;
+    coverFrom?: string;
+    coverTo?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -65,6 +68,9 @@ export class OrganizationModel {
             website: orgData.website || '',
             industry: orgData.industry || '',
             location: orgData.location || '',
+            phone: orgData.phone || '',
+            coverFrom: orgData.coverFrom || '',
+            coverTo: orgData.coverTo || '',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };

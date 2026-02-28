@@ -23,11 +23,11 @@ router.post('/', async (req, res) => {
         const userId = (req as any).user?.uid;
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-        const { name, description, logoUrl, email, website, industry, location } = req.body;
+        const { name, description, logoUrl, email, website, industry, location, phone, coverFrom, coverTo } = req.body;
         if (!name?.trim()) return res.status(400).json({ error: 'Organization name is required' });
 
         const org = await orgService.createOrganization(
-            { name, description, logoUrl, email, website, industry, location, user_id: userId },
+            { name, description, logoUrl, email, website, industry, location, phone, coverFrom, coverTo, user_id: userId },
             userId
         );
         res.status(201).json(org);
@@ -44,11 +44,11 @@ router.put('/:id', async (req, res) => {
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
         const { id } = req.params;
-        const { name, description, logoUrl, email, website, industry, location } = req.body;
+        const { name, description, logoUrl, email, website, industry, location, phone, coverFrom, coverTo } = req.body;
 
         const updated = await orgService.updateOrganization(
             id,
-            { name, description, logoUrl, email, website, industry, location },
+            { name, description, logoUrl, email, website, industry, location, phone, coverFrom, coverTo },
             userId
         );
         if (!updated) return res.status(404).json({ error: 'Organization not found' });

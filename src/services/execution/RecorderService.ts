@@ -960,7 +960,51 @@ export class RecorderService {
         }
     }
 
-    async exportScript(scriptId: string, format: 'side' | 'java' | 'python', userId?: string) {
+    /** Generate a Playwright TypeScript test file from a recorded script's steps */
+    generatePlaywrightTs(script: { name: string; steps: any[] }): string {
+        const fnName = (script.name || 'test').replace(/[^a-zA-Z0-9_]/g, '_').replace(/^\d/, '_$&');
+        const baseUrl = script.steps.find((s: any) => s.command === 'open' || s.action === 'navigate')?.target ||
+            script.steps.find((s: any) => s.command === 'open' || s.action === 'navigate')?.url || '';
+
+        let lines: string[] = [
+            `import { test, expect } from '@playwright/test';`,
+            ``,
+            `test('${script.name || 'Recorded Test'}', async ({ page }) => {`,
+        ];
+
+        for (const step of script.steps) {
+            const cmd = step.command || step.action || '';
+            const target = step.target || step.selector || '';
+            const url = step.url || step.target || '';
+            const value = step.value || '';
+
+            // Normalise selector
+            let selector = target;
+            if (selector.startsWith('css=')) selector = selector.slice(4);
+            if (selector.startsWith('id=')) selector = `#${selector.slice(3)}`;
+            if (selector.startsWith('name=')) selector = `[name="${selector.slice(5)}"]`;
+            // xpath stays as-is, Playwright handles 'xpath=...'
+
+            if (cmd === 'open' || cmd === 'navigate') {
+                lines.push(`  await page.goto('${url}');`);
+            } else if (cmd === 'click') {
+                lines.push(`  await page.locator('${selector}').click();`);
+            } else if (cmd === 'type') {
+                lines.push(`  await page.locator('${selector}').fill('${value}');`);
+            } else if (cmd === 'scroll') {
+                lines.push(`  await page.mouse.wheel(0, 500);`);
+            } else if (cmd === 'assertText') {
+                lines.push(`  await expect(page.locator('${selector}')).toHaveText('${value}');`);
+            } else if (cmd === 'assertVisible') {
+                lines.push(`  await expect(page.locator('${selector}')).toBeVisible();`);
+            }
+        }
+
+        lines.push(`});`);
+        return lines.join('\n');
+    }
+
+    async exportScript(scriptId: string, format: 'side' | 'java' | 'python' | 'playwright-ts', userId?: string) {
         // Find script first (same inefficient scan)
         const allProjects = userId
             ? await localProjectService.getAllProjects(userId)
@@ -1034,56 +1078,86 @@ export class RecorderService {
                 urls: [script.steps.find((s: any) => s.command === 'open')?.target || ""],
                 plugins: []
             };
+        } else if (format === 'playwright-ts') {
+            return this.generatePlaywrightTs(script);
         } else if (format === 'java') {
+            // Java Playwright (not legacy Selenium)
             const className = (script.name || 'Untitled').replace(/[^a-zA-Z0-9]/g, '');
-            let code = `import org.junit.Test;\nimport org.junit.Before;\nimport org.junit.After;\nimport static org.junit.Assert.*;\nimport static org.hamcrest.CoreMatchers.is;\nimport static org.hamcrest.core.IsNot.not;\nimport org.openqa.selenium.By;\nimport org.openqa.selenium.WebDriver;\nimport org.openqa.selenium.firefox.FirefoxDriver;\nimport org.openqa.selenium.chrome.ChromeDriver;\nimport org.openqa.selenium.remote.RemoteWebDriver;\nimport org.openqa.selenium.remote.DesiredCapabilities;\nimport org.openqa.selenium.Dimension;\nimport org.openqa.selenium.WebElement;\nimport org.openqa.selenium.interactions.Actions;\nimport org.openqa.selenium.support.ui.ExpectedConditions;\nimport org.openqa.selenium.support.ui.WebDriverWait;\nimport org.openqa.selenium.JavascriptExecutor;\nimport org.openqa.selenium.Alert;\nimport org.openqa.selenium.Keys;\nimport java.util.*;\nimport java.net.MalformedURLException;\nimport java.net.URL;\n\npublic class ${className}Test {\n  private WebDriver driver;\n  private Map<String, Object> vars;\n  JavascriptExecutor js;\n\n  @Before\n  public void setUp() {\n    driver = new ChromeDriver();\n    js = (JavascriptExecutor) driver;\n    vars = new HashMap<String, Object>();\n  }\n\n  @After\n  public void tearDown() {\n    driver.quit();\n  }\n\n  @Test\n  public void ${className.toLowerCase()}() {\n`;
+            const baseUrl = script.steps.find((s: any) => s.command === 'open')?.target || '';
+            let code = `import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.*;
+import org.junit.jupiter.api.*;
+import static org.junit.jupiter.api.Assertions.*;
 
+public class ${className}Test {
+    static Playwright playwright;
+    static Browser browser;
+    BrowserContext context;
+    Page page;
+
+    @BeforeAll
+    static void launchBrowser() {
+        playwright = Playwright.create();
+        browser = playwright.chromium().launch();
+    }
+
+    @AfterAll
+    static void closeBrowser() {
+        playwright.close();
+    }
+
+    @BeforeEach
+    void createContextAndPage() {
+        context = browser.newContext();
+        page = context.newPage();
+    }
+
+    @AfterEach
+    void closeContext() {
+        context.close();
+    }
+
+    @Test
+    void ${className.charAt(0).toLowerCase() + className.slice(1)}() {
+`;
             for (const step of script.steps) {
-                if (step.command === 'open') {
-                    code += `    driver.get("${step.target}");\n`;
-                } else if (step.command === 'click') {
-                    const sel = getBestSelector(step);
-                    let byStrategy = 'cssSelector';
-                    if (sel.type === 'id') byStrategy = 'id';
-                    else if (sel.type === 'name') byStrategy = 'name';
-                    else if (sel.type === 'xpath') byStrategy = 'xpath';
+                const cmd = step.command || step.action || '';
+                let sel = (step.target || step.selector || '').replace(/css=/, '').replace(/id=/, '#').replace(/"/g, '\\"');
+                if (sel.startsWith('name=')) sel = `[name="${sel.slice(5)}"]`;
 
-                    code += `    driver.findElement(By.${byStrategy}("${sel.value.replace(/"/g, '\\"').replace(/\\/g, '\\\\')}")).click();\n`;
-                } else if (step.command === 'type') {
-                    const sel = getBestSelector(step);
-                    let byStrategy = 'cssSelector';
-                    if (sel.type === 'id') byStrategy = 'id';
-                    else if (sel.type === 'name') byStrategy = 'name';
-                    else if (sel.type === 'xpath') byStrategy = 'xpath';
-
-                    code += `    driver.findElement(By.${byStrategy}("${sel.value.replace(/"/g, '\\"').replace(/\\/g, '\\\\')}")).sendKeys("${step.value}");\n`;
+                if (cmd === 'open' || cmd === 'navigate') {
+                    code += `        page.navigate("${step.target || step.url || ''}");\n`;
+                } else if (cmd === 'click') {
+                    code += `        page.locator("${sel}").click();\n`;
+                } else if (cmd === 'type') {
+                    code += `        page.locator("${sel}").fill("${(step.value || '').replace(/"/g, '\\"')}");\n`;
+                } else if (cmd === 'scroll') {
+                    code += `        page.mouse().wheel(0, 500);\n`;
                 }
             }
-            code += `  }\n}\n`;
+            code += `    }\n}\n`;
             return code;
         } else if (format === 'python') {
-            const className = (script.name || 'Untitled').replace(/[^a-zA-Z0-9]/g, '');
-            let code = `import pytest\nimport time\nimport json\nfrom selenium import webdriver\nfrom selenium.webdriver.common.by import By\nfrom selenium.webdriver.common.action_chains import ActionChains\nfrom selenium.webdriver.support import expected_conditions\nfrom selenium.webdriver.support.wait import WebDriverWait\nfrom selenium.webdriver.common.keys import Keys\nfrom selenium.webdriver.common.desired_capabilities import DesiredCapabilities\n\nclass Test${className}():\n  def setup_method(self, method):\n    self.driver = webdriver.Chrome()\n    self.vars = {}\n  \n  def teardown_method(self, method):\n    self.driver.quit()\n  \n  def test_${className.toLowerCase()}(self):\n`;
+            // Python Playwright (not legacy Selenium)
+            const fnName = (script.name || 'untitled').toLowerCase().replace(/[^a-z0-9]/g, '_');
+            let code = `import pytest
+from playwright.sync_api import Page, expect
 
+def test_${fnName}(page: Page):
+`;
             for (const step of script.steps) {
-                if (step.command === 'open') {
-                    code += `    self.driver.get("${step.target}")\n`;
-                } else if (step.command === 'click') {
-                    const sel = getBestSelector(step);
-                    let byStrategy = "By.CSS_SELECTOR";
-                    if (sel.type === 'id') byStrategy = "By.ID";
-                    else if (sel.type === 'name') byStrategy = "By.NAME";
-                    else if (sel.type === 'xpath') byStrategy = "By.XPATH";
+                const cmd = step.command || step.action || '';
+                let sel = (step.target || step.selector || '').replace(/css=/, '').replace(/id=/, '#');
+                if (sel.startsWith('name=')) sel = `[name="${sel.slice(5)}"]`;
 
-                    code += `    self.driver.find_element(${byStrategy}, "${sel.value.replace(/"/g, '\\"').replace(/\\/g, '\\\\')}").click()\n`;
-                } else if (step.command === 'type') {
-                    const sel = getBestSelector(step);
-                    let byStrategy = "By.CSS_SELECTOR";
-                    if (sel.type === 'id') byStrategy = "By.ID";
-                    else if (sel.type === 'name') byStrategy = "By.NAME";
-                    else if (sel.type === 'xpath') byStrategy = "By.XPATH";
-
-                    code += `    self.driver.find_element(${byStrategy}, "${sel.value.replace(/"/g, '\\"').replace(/\\/g, '\\\\')}").send_keys("${step.value}")\n`;
+                if (cmd === 'open' || cmd === 'navigate') {
+                    code += `    page.goto("${step.target || step.url || ''}")\n`;
+                } else if (cmd === 'click') {
+                    code += `    page.locator("${sel}").click()\n`;
+                } else if (cmd === 'type') {
+                    code += `    page.locator("${sel}").fill("${(step.value || '')}")\n`;
+                } else if (cmd === 'scroll') {
+                    code += `    page.mouse.wheel(0, 500)\n`;
                 }
             }
             return code;

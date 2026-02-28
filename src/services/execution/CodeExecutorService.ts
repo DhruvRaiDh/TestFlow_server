@@ -40,15 +40,19 @@ export class CodeExecutorService {
         switch (language) {
             case 'typescript':
             case 'javascript':
-                fileName = `${runId}.ts`; // We use .ts suffix for tsx compatibility, even for JS content it usually works or we can check
-                filePath = path.join(this.tempDir, fileName); // Assign
+                fileName = `${runId}.ts`;
+                filePath = path.join(this.tempDir, fileName);
 
-                // Detection: Is this a Mocha Test?
-                if (content.includes('describe(') || content.includes('it(')) {
+                // Playwright test files: use `npx playwright test` runner
+                if (content.includes('@playwright/test') || content.includes('playwright/test')) {
                     command = 'npx';
-                    args = ['mocha', filePath, '--timeout', '60000', '--require', 'tsx']; // Use tsx execution for mocha to handle TS/ESM
+                    args = ['playwright', 'test', filePath, '--reporter=list'];
+                    // Mocha tests
+                } else if (content.includes('describe(') || content.includes('it(')) {
+                    command = 'npx';
+                    args = ['mocha', filePath, '--timeout', '60000', '--require', 'tsx'];
                 } else {
-                    // Standard Script
+                    // Standard script
                     command = 'npx';
                     args = ['tsx', filePath];
                 }
@@ -106,13 +110,15 @@ export class CodeExecutorService {
                 // Return early since we did manual write
                 return new Promise((resolve) => {
                     const logs: string[] = [];
+                    const backendCwd = path.join(__dirname, '../../../../');
                     // Spawn Process
-                    const process = spawn(command, args, {
+                    const child = spawn(command, args, {
                         shell: true,
                         env,
+                        cwd: backendCwd, // Run from backend root so node resolves node_modules
                     });
 
-                    process.stdout.on('data', (data) => {
+                    child.stdout.on('data', (data: any) => {
                         const line = data.toString();
                         logs.push(line);
 
@@ -123,7 +129,7 @@ export class CodeExecutorService {
                         }
                     });
 
-                    process.stderr.on('data', (data) => {
+                    child.stderr.on('data', (data: any) => {
                         const line = `[Details] ${data.toString()}`;
                         logs.push(line);
 
@@ -134,7 +140,7 @@ export class CodeExecutorService {
                         }
                     });
 
-                    process.on('close', (code) => {
+                    child.on('close', (code: any) => {
                         try {
                             if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
                             // Cleanup compiled class
@@ -147,10 +153,10 @@ export class CodeExecutorService {
                     // Timeout safety (120 seconds for automation)
                     const timeoutMs = 120000;
                     const timeoutId = setTimeout(() => {
-                        try { process.kill(); logs.push(`\n[System] Execution timed out.`); } catch (e) { }
+                        try { child.kill(); logs.push(`\n[System] Execution timed out.`); } catch (e) { }
                         resolve({ runId, logs, exitCode: -1 });
                     }, timeoutMs);
-                    process.on('exit', () => clearTimeout(timeoutId));
+                    child.on('exit', () => clearTimeout(timeoutId));
                 });
 
             default:
@@ -163,14 +169,16 @@ export class CodeExecutorService {
         // 3. Execute
         return new Promise((resolve) => {
             const logs: string[] = [];
+            const backendCwd = path.join(__dirname, '../../../../');
 
             // Spawn Process
-            const process = spawn(command, args, {
+            const child = spawn(command, args, {
                 shell: true,
                 env, // Pass environment (Critical for Browsers!)
+                cwd: backendCwd, // Run from backend root so node resolves node_modules
             });
 
-            process.stdout.on('data', (data) => {
+            child.stdout.on('data', (data: any) => {
                 const line = data.toString();
                 logs.push(line);
 
@@ -181,7 +189,7 @@ export class CodeExecutorService {
                 }
             });
 
-            process.stderr.on('data', (data) => {
+            child.stderr.on('data', (data: any) => {
                 const line = data.toString();
                 logs.push(line);
 
@@ -213,7 +221,7 @@ export class CodeExecutorService {
             const timeoutMs = 120000;
             const timeoutId = setTimeout(() => {
                 try {
-                    process.kill();
+                    child.kill();
                     logs.push(`\n[System] Execution timed out (${timeoutMs / 1000}s limit).`);
                     console.warn(`[CodeExecutor] ⚠️ Execution Timed Out. RunID: ${runId}`);
                 } catch (e) {
@@ -223,7 +231,7 @@ export class CodeExecutorService {
             }, timeoutMs);
 
             // Clear timeout if finished
-            process.on('exit', () => clearTimeout(timeoutId));
+            child.on('exit', () => clearTimeout(timeoutId));
         });
     }
 }
