@@ -96,18 +96,26 @@ export class CodeExecutorService {
                 // 4. Determine Runner (TestNG vs Main)
                 const isTestNG = content.includes('@Test');
 
-                command = 'javac';
+                // Build the full compile+run command
+                let javaCmd: string;
                 if (isTestNG) {
-                    // Compile and Run with TestNG
-                    command = `javac -cp ${classPath} "${filePath}" && java -cp ${classPath} org.testng.TestNG -testclass ${className}`;
+                    javaCmd = `javac -cp ${classPath} "${filePath}" && java -cp ${classPath} org.testng.TestNG -testclass ${className}`;
                 } else {
-                    // Compile and Run Standard Main
-                    command = `javac -cp ${classPath} "${filePath}" && java -cp ${classPath} ${className}`;
+                    javaCmd = `javac -cp ${classPath} "${filePath}" && java -cp ${classPath} ${className}`;
+                }
+
+                // On Windows, use cmd /c to avoid triggering WSL via bash
+                if (process.platform === 'win32') {
+                    command = 'cmd';
+                    args = ['/c', javaCmd];
+                } else {
+                    command = 'sh';
+                    args = ['-c', javaCmd];
                 }
 
                 // Write the PROCESSED content, not original
                 fs.writeFileSync(filePath, processedContent);
-                args = []; // Command contains everything (shell mode)
+                // args already set above — no override needed
 
                 // Return early since we did manual write
                 return new Promise((resolve) => {
