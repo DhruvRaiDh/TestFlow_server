@@ -23,13 +23,13 @@ router.post('/', async (req, res) => {
     const userId = (req as any).user?.uid;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { name, description, orgId } = req.body;
+    const { name, description, orgId, platformType } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Project name is required' });
     }
 
-    const newProject = await projectService.createProject(name, description, userId, orgId);
+    const newProject = await projectService.createProject(name, description, userId, orgId, platformType);
     res.status(201).json(newProject);
   } catch (error) {
     console.error('Error creating project:', error);
@@ -70,6 +70,7 @@ router.put('/:id', async (req, res) => {
     if (req.body.name !== undefined) updates.name = req.body.name;
     if (req.body.description !== undefined) updates.description = req.body.description;
     if (req.body.orgId !== undefined) updates.orgId = req.body.orgId || null;
+    if (req.body.platformType !== undefined) updates.platformType = req.body.platformType;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });

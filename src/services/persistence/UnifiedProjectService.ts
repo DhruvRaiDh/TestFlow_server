@@ -62,20 +62,26 @@ export class UnifiedProjectService {
 
     // --- Writes (Local First + Background Remote Sync) ---
 
-    async createProject(name: string, description: string, userId: string, orgId?: string | null): Promise<Project> {
+    async createProject(name: string, description: string, userId: string, orgId?: string | null, platformType?: string): Promise<Project> {
         // 1. Create Local (Immediate)
         const id = crypto.randomUUID();
         let project = await localProjectService.createProject(name, description, userId, id);
 
-        // 2. If org assigned, persist via update and attach to return object
-        if (orgId !== undefined && orgId !== null) {
-            await localProjectService.updateProject(id, { orgId } as any, userId);
-            project = { ...project, orgId } as any;
+        // 2. Persist orgId and platformType via update
+        const extraUpdates: Record<string, any> = {};
+        if (orgId !== undefined && orgId !== null) extraUpdates.orgId = orgId;
+        if (platformType) extraUpdates.platformType = platformType;
+
+        if (Object.keys(extraUpdates).length > 0) {
+            await localProjectService.updateProject(id, extraUpdates as any, userId);
+            project = { ...project, ...extraUpdates } as any;
         }
 
         // 3. Sync to Remote (Background)
         remoteService.createProject(name, description, userId, id).then(async () => {
-            if (orgId) await remoteService.updateProject(id, { orgId } as any, userId);
+            if (Object.keys(extraUpdates).length > 0) {
+                await remoteService.updateProject(id, extraUpdates as any, userId);
+            }
         }).catch(e => console.error('[Unified] Background Remote Create Failed:', e));
 
         return project as Project;

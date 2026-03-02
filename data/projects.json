@@ -6,8 +6,9 @@
       "description": "POS",
       "user_id": "maTXKvjwehP7moFBH9fmG9bTCeI3",
       "createdAt": "2026-01-01T10:33:34.279Z",
-      "updatedAt": "2026-02-26T08:41:01.885Z",
-      "orgId": "iA4I7fi0OU"
+      "updatedAt": "2026-03-02T10:32:54.066Z",
+      "orgId": "iA4I7fi0OU",
+      "platformType": "desktop"
     },
     {
       "id": "393a6b03-d73e-4a6f-811f-88c11f6b2bc3",
@@ -15,8 +16,9 @@
       "description": "POS , Offline Version of Online POS",
       "user_id": "maTXKvjwehP7moFBH9fmG9bTCeI3",
       "createdAt": "2026-02-10T04:43:13.507Z",
-      "updatedAt": "2026-02-26T08:41:04.062Z",
-      "orgId": "iA4I7fi0OU"
+      "updatedAt": "2026-03-02T10:43:46.860Z",
+      "orgId": "iA4I7fi0OU",
+      "platformType": "desktop"
     },
     {
       "id": "d4a284b5-b12b-414a-9448-6e0db6b0fa8d",
@@ -24,8 +26,9 @@
       "description": "Foodchow Customer App",
       "user_id": "maTXKvjwehP7moFBH9fmG9bTCeI3",
       "createdAt": "2026-01-06T07:06:19.508Z",
-      "updatedAt": "2026-02-26T08:41:05.793Z",
-      "orgId": "iA4I7fi0OU"
+      "updatedAt": "2026-03-02T10:43:55.755Z",
+      "orgId": "iA4I7fi0OU",
+      "platformType": "mobile"
     },
     {
       "id": "b0f4f5fd-6490-4966-814c-befab9539d47",
@@ -53,6 +56,16 @@
       "createdAt": "2026-02-26T08:23:28.717Z",
       "updatedAt": "2026-02-26T08:29:47.855Z",
       "orgId": "0oAyCsTCxZ"
+    },
+    {
+      "id": "4c3ae931-d6db-49e5-95f5-59cf23f00d27",
+      "name": "Foodchow POS online Mobile App",
+      "description": "Mobile Version of Foodchow POS Desktop a[[",
+      "user_id": "maTXKvjwehP7moFBH9fmG9bTCeI3",
+      "createdAt": "2026-03-02T10:43:29.808Z",
+      "updatedAt": "2026-03-02T10:43:29.814Z",
+      "orgId": "iA4I7fi0OU",
+      "platformType": "mobile"
     }
   ]
 }

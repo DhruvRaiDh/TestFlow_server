@@ -16,8 +16,9 @@ export interface Project {
     id: string;
     name: string;
     description: string;
+    platformType?: 'web' | 'mobile' | 'desktop' | 'api'; // Optional — defaults to 'web' if absent
     user_id?: string;
-    orgId?: string | null; // Optional: the organization this project belongs to
+    orgId?: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -84,6 +85,7 @@ export class ProjectModel {
             id: this.generateShortId(),
             name: projectData.name,
             description: projectData.description,
+            platformType: projectData.platformType ?? 'web', // default to web
             user_id: projectData.user_id,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
