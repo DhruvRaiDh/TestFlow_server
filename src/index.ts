@@ -30,6 +30,8 @@ import { suitesRouter } from './routes/persistence/suites';
 import performanceRouter from './routes/execution/performance';
 import { runsRouter } from './routes/execution/runs';
 import { organizationRoutes } from './routes/persistence/organizations';
+import { mobileRouter } from './routes/mobile/index';
+
 
 dotenv.config();
 
@@ -97,6 +99,8 @@ app.use('/api/performance', performanceRouter);
 app.use('/api/runs', runsRouter);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/test-lab', testLabRouter); // ← Test Lab Module
+app.use('/api/mobile', mobileRouter);   // ← Mobile Automation Module
+
 
 // Initialize Services
 recorderService.setSocket(io);
