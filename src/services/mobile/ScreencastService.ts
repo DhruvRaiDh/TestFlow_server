@@ -13,7 +13,7 @@ interface StreamSession {
     errorCount: number;
 }
 
-const MAX_ERRORS = 8;
+const MAX_ERRORS = 4;
 
 const streams = new Map<string, StreamSession>();
 
@@ -30,7 +30,12 @@ export function startStream(sessionId: string, deviceId: string, res: Response, 
     const session: StreamSession = { deviceId, res, interval: null, active: true, errorCount: 0 };
     streams.set(sessionId, session);
 
+    // Send initial heartbeat so frontend knows SSE is alive
+    res.write(`data: ${JSON.stringify({ type: 'connected', deviceId })}\n\n`);
+    console.log(`[Screencast] Stream started for session=${sessionId} device=${deviceId} fps=${fps}`);
+
     const frameMs = Math.round(1000 / fps);
+    let frameSent = false;
 
     const sendFrame = async () => {
         const s = streams.get(sessionId);
@@ -39,22 +44,26 @@ export function startStream(sessionId: string, deviceId: string, res: Response, 
         try {
             const base64 = await screenshotBase64(deviceId);
             s.errorCount = 0; // reset on success
+            frameSent = true;
 
             if (s.active && !res.writableEnded) {
                 res.write(`data: ${JSON.stringify({ type: 'frame', image: base64 })}\n\n`);
             }
         } catch (err: any) {
             s.errorCount++;
-            if (s.errorCount >= MAX_ERRORS) {
+            console.warn(`[Screencast] Frame error #${s.errorCount} for ${sessionId}: ${err.message}`);
+            // Fast-fail on first frame error if no frame was ever sent — device likely unreachable
+            const limit = !frameSent ? 1 : MAX_ERRORS;
+            if (s.errorCount >= limit) {
                 s.active = false;
                 if (session.interval) clearInterval(session.interval);
+                console.error(`[Screencast] Stream failed for ${sessionId} after ${s.errorCount} errors`);
                 if (!res.writableEnded) {
-                    res.write(`data: ${JSON.stringify({ type: 'error', message: `ADB screenshot failed after ${MAX_ERRORS} attempts: ${err.message}` })}\n\n`);
+                    res.write(`data: ${JSON.stringify({ type: 'error', message: `ADB screenshot failed: ${err.message}` })}\n\n`);
                     res.end();
                 }
                 streams.delete(sessionId);
             }
-            // Otherwise: tolerate transient errors silently
         }
     };
 
