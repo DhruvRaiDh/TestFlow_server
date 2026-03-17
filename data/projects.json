@@ -66,6 +66,16 @@
       "updatedAt": "2026-03-02T10:43:29.814Z",
       "orgId": "iA4I7fi0OU",
       "platformType": "mobile"
+    },
+    {
+      "id": "bcc22877-55ea-43b7-8b81-ec596b221eea",
+      "name": "FoodChow POS offline",
+      "description": "Mobile Version of Desktop app",
+      "user_id": "maTXKvjwehP7moFBH9fmG9bTCeI3",
+      "createdAt": "2026-03-14T03:58:29.380Z",
+      "updatedAt": "2026-03-14T03:58:29.390Z",
+      "orgId": "iA4I7fi0OU",
+      "platformType": "mobile"
     }
   ]
 }

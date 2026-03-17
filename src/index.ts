@@ -5,10 +5,15 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import path from 'path';
+
+// Initialize SQLite database (Documents/TestFlow/testflow.db) on startup
+import './services/persistence/DatabaseService';
+
 import { recorderService } from './services/execution/RecorderService';
 import { schedulerService } from './services/execution/SchedulerService';
 import { testLabRouter } from './modules/test-lab/routes';
 import { testLabRecorderService } from './modules/test-lab/services/RecorderService';
+
 
 // Import Routes
 import { scriptRoutes } from './routes/persistence/scripts';

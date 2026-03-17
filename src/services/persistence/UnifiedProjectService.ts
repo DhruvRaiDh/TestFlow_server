@@ -84,6 +84,12 @@ export class UnifiedProjectService {
             }
         }).catch(e => console.error('[Unified] Background Remote Create Failed:', e));
 
+        // 4. Sync to SQLite (Background — non-blocking)
+        this._sqliteWrite(() => {
+            const { sql_createProject } = require('./SQLiteProjectService');
+            return sql_createProject(name, description, userId, orgId ?? undefined, platformType ?? 'web', id);
+        });
+
         return project as Project;
     }
 
@@ -94,6 +100,11 @@ export class UnifiedProjectService {
             console.error('[Unified] Background Remote Update Failed:', e)
         );
 
+        this._sqliteWrite(() => {
+            const { sql_updateProject } = require('./SQLiteProjectService');
+            return sql_updateProject(id, updates, userId);
+        });
+
         return project;
     }
 
@@ -103,6 +114,11 @@ export class UnifiedProjectService {
         remoteService.deleteProject(id, userId).catch(e =>
             console.error('[Unified] Background Remote Delete Failed:', e)
         );
+
+        this._sqliteWrite(() => {
+            const { sql_deleteProject } = require('./SQLiteProjectService');
+            return sql_deleteProject(id, userId);
+        });
     }
 
     async createProjectPage(projectId: string, pageData: any, userId: string): Promise<any> {
@@ -111,6 +127,11 @@ export class UnifiedProjectService {
         remoteService.createProjectPage(projectId, page, userId).catch(e =>
             console.error('[Unified] Background Remote Page Create Failed:', e)
         );
+
+        this._sqliteWrite(() => {
+            const { sql_createPage } = require('./SQLiteProjectService');
+            return sql_createPage(projectId, page);
+        });
 
         return page;
     }
@@ -124,6 +145,10 @@ export class UnifiedProjectService {
     async deleteProjectPage(projectId: string, pageId: string, userId: string): Promise<void> {
         await localProjectService.deleteProjectPage(projectId, pageId, userId);
         remoteService.deleteProjectPage(projectId, pageId, userId).catch(e => console.error(e));
+        this._sqliteWrite(() => {
+            const { sql_deletePage } = require('./SQLiteProjectService');
+            return sql_deletePage(projectId, pageId);
+        });
     }
 
     async createDailyData(projectId: string, dataPayload: any, userId: string): Promise<any> {
@@ -135,6 +160,13 @@ export class UnifiedProjectService {
     async updateDailyData(projectId: string, date: string, updates: any, userId: string): Promise<any> {
         const data = await localProjectService.updateDailyData(projectId, date, updates, userId);
         remoteService.updateDailyData(projectId, date, updates, userId).catch((e: any) => console.error(e));
+
+        // Also write to SQLite in background
+        this._sqliteWrite(() => {
+            const { sql_updateDailyData } = require('./SQLiteProjectService');
+            return sql_updateDailyData(projectId, date, updates, userId);
+        });
+
         return data;
     }
 
@@ -151,6 +183,10 @@ export class UnifiedProjectService {
     async createScript(projectId: string, scriptData: any, userId: string): Promise<any> {
         const script = await localProjectService.createScript(projectId, scriptData, userId);
         remoteService.createScript(projectId, script, userId).catch(e => console.error(e));
+        this._sqliteWrite(() => {
+            const { sql_createScript } = require('./SQLiteProjectService');
+            return sql_createScript(projectId, script);
+        });
         return script;
     }
 
@@ -159,6 +195,10 @@ export class UnifiedProjectService {
         const script = await localProjectService.updateScript(projectId, scriptId, updates, userId);
         if (script) {
             remoteService.updateScript(projectId, scriptId, updates, userId).catch(e => console.error(e));
+            this._sqliteWrite(() => {
+                const { sql_updateScript } = require('./SQLiteProjectService');
+                return sql_updateScript(projectId, scriptId, updates);
+            });
         }
         return script;
     }
@@ -166,6 +206,10 @@ export class UnifiedProjectService {
     async deleteScript(projectId: string, scriptId: string, userId: string): Promise<void> {
         await localProjectService.deleteScript(projectId, scriptId, userId);
         remoteService.deleteScript(projectId, scriptId, userId).catch(e => console.error(e));
+        this._sqliteWrite(() => {
+            const { sql_deleteScript } = require('./SQLiteProjectService');
+            return sql_deleteScript(projectId, scriptId);
+        });
     }
 
     // --- Test Runs (Read Access) ---
@@ -176,6 +220,15 @@ export class UnifiedProjectService {
     // --- Files (Read Access) ---
     async getFSNodes(projectId: string): Promise<any[]> {
         return localProjectService.getFSNodes(projectId);
+    }
+
+    // ── SQLite background write helper ──────────────────────────────────────
+    // Fires the SQLite write asynchronously. Any failure is logged but never
+    // propagates — the JSON + Firebase layers are the source of truth for now.
+    private _sqliteWrite(fn: () => Promise<any>) {
+        Promise.resolve().then(fn).catch(e =>
+            console.warn('[SQLite] Background write failed (non-critical):', e?.message ?? e)
+        );
     }
 
     // --- Auto-Sync (Bidirectional) ---
