@@ -1,7 +1,57 @@
 import { Router } from 'express';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { settingsService } from '../../services/persistence/SettingsService';
 
+const execAsync = promisify(exec);
 const router = Router();
+
+// ── Tool Settings ─────────────────────────────────────────────────────────────
+
+// GET /api/settings/tools
+router.get('/tools', async (req, res) => {
+    try {
+        const toolSettings = await settingsService.getToolSettings();
+        res.json(toolSettings);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch tool settings' });
+    }
+});
+
+// PUT /api/settings/tools
+router.put('/tools', async (req, res) => {
+    try {
+        const updated = await settingsService.saveToolSettings(req.body);
+        res.json(updated);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to save tool settings' });
+    }
+});
+
+// POST /api/settings/tools/test — verify a tool path works
+router.post('/tools/test', async (req, res) => {
+    const { tool, toolPath } = req.body as { tool: string; toolPath: string };
+    if (!tool || !toolPath) return res.status(400).json({ ok: false, error: 'Missing tool or toolPath' });
+
+    const versionFlagMap: Record<string, string> = {
+        scrcpy: '--version',
+        adb: 'version',
+        python: '--version',
+        java: '-version',
+        node: '--version',
+    };
+
+    const flag = versionFlagMap[tool] ?? '--version';
+    const cmd = `"${toolPath}" ${flag}`;
+
+    try {
+        const { stdout, stderr } = await execAsync(cmd, { timeout: 5000 });
+        const output = (stdout || stderr).trim().split('\n')[0]; // first line only
+        res.json({ ok: true, version: output });
+    } catch (err: any) {
+        res.json({ ok: false, error: err.message?.split('\n')[0] ?? 'Tool not found or failed to run' });
+    }
+});
 
 // Get AI Keys
 router.get('/keys', async (req, res) => {

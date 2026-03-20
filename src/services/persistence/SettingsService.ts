@@ -3,6 +3,22 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { logger } from '../../lib/logger';
 
+export interface ToolSettings {
+    // Mobile Testing
+    scrcpyPath?: string;
+    adbPath?: string;
+    streamFps?: number;
+    androidSdkPath?: string;
+    appiumPort?: number;
+    // Script Runners
+    pythonPath?: string;
+    javaPath?: string;
+    nodePath?: string;
+    // Storage
+    mediaDir?: string;
+    executionTempDir?: string;
+}
+
 export interface UserAIKey {
     id: string;
     user_id: string;
@@ -23,7 +39,7 @@ export const settingsService = {
         try { await fs.access(DATA_DIR); } catch { await fs.mkdir(DATA_DIR, { recursive: true }); }
     },
 
-    async readSettings(): Promise<{ aiKeys: UserAIKey[] }> {
+    async readSettings(): Promise<{ aiKeys: UserAIKey[]; toolSettings?: ToolSettings }> {
         await this.ensureDataDir();
         try {
             const data = await fs.readFile(SETTINGS_FILE, 'utf-8');
@@ -39,7 +55,19 @@ export const settingsService = {
         }
     },
 
-    async writeSettings(data: { aiKeys: UserAIKey[] }) {
+    async getToolSettings(): Promise<ToolSettings> {
+        const settings = await this.readSettings();
+        return settings.toolSettings ?? {};
+    },
+
+    async saveToolSettings(updates: Partial<ToolSettings>): Promise<ToolSettings> {
+        const settings = await this.readSettings();
+        const merged = { ...(settings.toolSettings ?? {}), ...updates };
+        await this.writeSettings({ ...settings, toolSettings: merged });
+        return merged;
+    },
+
+    async writeSettings(data: { aiKeys: UserAIKey[]; toolSettings?: ToolSettings }) {
         await this.ensureDataDir();
         await fs.writeFile(SETTINGS_FILE, JSON.stringify(data, null, 2));
     },

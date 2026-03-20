@@ -9,6 +9,10 @@ import path from 'path';
 // Initialize SQLite database (Documents/TestFlow/testflow.db) on startup
 import './services/persistence/DatabaseService';
 
+// Run one-time JSON → SQLite migration in background (safe to run multiple times)
+import { runMigration } from './scripts/migrate-sqlite';
+runMigration().catch(e => console.warn('[Migration] Non-critical error:', e?.message ?? e));
+
 import { recorderService } from './services/execution/RecorderService';
 import { schedulerService } from './services/execution/SchedulerService';
 import { testLabRouter } from './modules/test-lab/routes';

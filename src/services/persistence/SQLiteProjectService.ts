@@ -222,6 +222,18 @@ export async function sql_updateDailyData(projectId: string, date: string, updat
     const db = requireDb();
     const t = now();
 
+    // ── FK Safety: ensure the project row exists before writing child rows ──
+    // This handles the case where migration hasn't run yet or a project was
+    // created before SQLite was added. Without this, all bug/TC writes fail
+    // with "FOREIGN KEY constraint failed".
+    const projectExists = db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
+    if (!projectExists) {
+        db.prepare(`
+            INSERT OR IGNORE INTO projects (id, name, description, platform_type, org_id, user_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(projectId, 'Unknown Project', '', 'web', null, userId, t, t);
+    }
+
     // Save bugs
     if (Array.isArray(updates.bugs)) {
         db.prepare('DELETE FROM bugs WHERE project_id = ? AND date = ?').run(projectId, date);
@@ -266,6 +278,7 @@ export async function sql_updateDailyData(projectId: string, date: string, updat
     const results = await sql_getDailyData(projectId, userId, date);
     return results[0] ?? { date, bugs: [], testCases: [] };
 }
+
 
 // ── SCRIPTS ───────────────────────────────────────────────────────────────────
 
