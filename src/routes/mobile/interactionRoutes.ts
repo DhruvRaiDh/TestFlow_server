@@ -124,3 +124,18 @@ interactionRoutes.get('/window-size/:deviceId', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// ── Element detection (without tap) ───────────────────────────────────────
+
+interactionRoutes.post('/element-at/:deviceId', async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const { x, y } = req.body;
+        if (x === undefined || y === undefined) return res.status(400).json({ error: 'x and y required' });
+
+        const element = await findElementByCoords(deviceId, x, y);
+        res.json({ element });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});

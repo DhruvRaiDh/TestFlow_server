@@ -1,6 +1,8 @@
 import { EventEmitter } from 'events';
 import { takeScreenshot, tap, swipe, doubleTap, longPress, pressBack, pressHome, typeText } from './AdbDirectService';
+import { findElementForReplay } from './ElementLookupService';
 import { getSession } from './AppiumService';
+import { adbShell } from './AdbDirectService';
 import { db } from '../../firebase';
 import { Timestamp } from 'firebase-admin/firestore';
 import type { ScriptStep } from './ScriptStorageService';
@@ -49,22 +51,35 @@ export type LogEntry = {
 async function executeStep(step: ScriptStep, deviceId: string, sessionId?: string): Promise<{ passed: boolean; error?: string }> {
     try {
         switch (step.action) {
-            case 'tap':
-                if (step.x !== undefined && step.y !== undefined) {
-                    await tap(deviceId, step.x, step.y);
+            case 'tap': {
+                // Try element-based lookup first, fall back to coordinates
+                const coords = await findElementForReplay(deviceId, step);
+                if (coords) {
+                    await tap(deviceId, coords.x, coords.y);
                 } else if (step.locator && sessionId) {
                     const session = await getSession(sessionId);
                     if (session) await session.driver.$(step.locator).click();
+                } else {
+                    throw new Error(`Cannot locate element: no locator or coordinates for tap`);
                 }
                 break;
+            }
 
-            case 'doubleTap':
-                await doubleTap(deviceId, step.x ?? 540, step.y ?? 960);
+            case 'doubleTap': {
+                const coords = await findElementForReplay(deviceId, step);
+                const x = coords?.x ?? step.x ?? 540;
+                const y = coords?.y ?? step.y ?? 960;
+                await doubleTap(deviceId, x, y);
                 break;
+            }
 
-            case 'longPress':
-                await longPress(deviceId, step.x ?? 540, step.y ?? 960);
+            case 'longPress': {
+                const coords = await findElementForReplay(deviceId, step);
+                const x = coords?.x ?? step.x ?? 540;
+                const y = coords?.y ?? step.y ?? 960;
+                await longPress(deviceId, x, y);
                 break;
+            }
 
             case 'swipe':
                 await swipe(deviceId, step.startX ?? 540, step.startY ?? 1400, step.endX ?? 540, step.endY ?? 400);
@@ -126,8 +141,10 @@ export async function executeScript(opts: {
     screenshotOnFail?: boolean;
     onLog?: (log: LogEntry) => void;
     runId: string;
+    appPackage?: string;
+    appActivity?: string;
 }): Promise<RunResult> {
-    const { scriptId, steps, deviceId, sessionId, screenshotOnFail = true, onLog, runId } = opts;
+    const { scriptId, steps, deviceId, sessionId, screenshotOnFail = true, onLog, runId, appPackage, appActivity } = opts;
 
     const emitter = new EventEmitter();
     activeRuns.set(runId, { emitter, cancelled: false });
@@ -157,6 +174,25 @@ export async function executeScript(opts: {
 
     log('INFO', `▶ Starting run on device: ${deviceId}`);
     log('INFO', `📋 Script has ${steps.length} steps`);
+
+    // ── Launch the target app if package info is available ──
+    if (appPackage) {
+        try {
+            const component = appActivity ? `${appPackage}/${appActivity}` : appPackage;
+            const cmd = appActivity
+                ? `am start -n ${component}`
+                : `monkey -p ${appPackage} -c android.intent.category.LAUNCHER 1`;
+            log('INFO', `🚀 Launching app: ${component}`);
+            await adbShell(deviceId, cmd);
+            // Wait for app to load
+            await new Promise(r => setTimeout(r, 3000));
+            log('INFO', `✅ App launched, waiting 3s for load...`);
+        } catch (err: any) {
+            log('ERROR', `⚠ Failed to launch app: ${err.message} — continuing with current screen`);
+        }
+    } else {
+        log('INFO', `⚠ No app package specified — running on current screen`);
+    }
 
     for (let i = 0; i < steps.length; i++) {
         const run = activeRuns.get(runId);

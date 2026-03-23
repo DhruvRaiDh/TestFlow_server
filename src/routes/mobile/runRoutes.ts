@@ -79,6 +79,8 @@ runRoutes.post('/runs', async (req, res) => {
             deviceId,
             screenshotOnFail: screenshotOnFail ?? true,
             runId,
+            appPackage: script.appPackage,
+            appActivity: script.appActivity,
             onLog: (log: LogEntry) => {
                 const currentListeners = logListeners.get(runId) || [];
                 currentListeners.forEach(l => l(log));
