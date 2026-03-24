@@ -23,3 +23,12 @@ debug_*.js
 debug_*.ts
 test_*.js
 test_*.ts
+
+# Missing Execution/Temp Data
+temp_execution/
+temp_batch_runs/
+test-output/
+test-results/
+
+# Build caches
+*.tsbuildinfo
