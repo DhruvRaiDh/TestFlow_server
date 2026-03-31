@@ -245,8 +245,22 @@ export class UnifiedProjectService {
                     const normalized = this.normalizeProject(rProj, userId);
                     console.log(`[Unified] Pulling remote project to local: ${normalized.name}`);
                     await localProjectService.createProject(normalized.name, normalized.description, userId, normalized.id);
+                    // Preserve orgId and platformType from remote
+                    const extraFields: Record<string, any> = {};
+                    if ((normalized as any).orgId) extraFields.orgId = (normalized as any).orgId;
+                    if ((normalized as any).platformType) extraFields.platformType = (normalized as any).platformType;
+                    if (Object.keys(extraFields).length > 0) {
+                        await localProjectService.updateProject(normalized.id, extraFields as any, userId);
+                    }
+                } else {
+                    // If local project exists but is missing orgId that remote has, pull it from remote
+                    const localOrgId = (lProj as any).orgId ?? null;
+                    const remoteOrgId = (rProj as any).orgId ?? null;
+                    if (!localOrgId && remoteOrgId) {
+                        console.log(`[Unified] Restoring orgId from remote for "${lProj.name}": ${remoteOrgId}`);
+                        await localProjectService.updateProject(lProj.id, { orgId: remoteOrgId } as any, userId);
+                    }
                 }
-                // else: Determine which is newer? relying on "last write wins" or just pushing local changes below.
             }
 
             // B. Push Local -> Remote (Backup)
@@ -259,40 +273,63 @@ export class UnifiedProjectService {
                     remoteProj = await remoteService.createProject(localProj.name, localProj.description, userId, localProj.id);
                 }
 
-                // 1b. Sync orgId field — push local value to Firestore if different
-                // (Covers the case where user assigns a project to an org locally)
+                // 1b. Sync orgId field — bidirectional with remote-wins-if-local-empty
                 const localOrgId = (localProj as any).orgId ?? null;
                 const remoteOrgId = remoteProj ? (remoteProj as any).orgId ?? null : null;
                 if (localOrgId !== remoteOrgId) {
-                    console.log(`[Unified] Syncing orgId for "${localProj.name}": ${remoteOrgId} → ${localOrgId}`);
-                    remoteService.updateProject(localProj.id, { orgId: localOrgId } as any, userId)
-                        .catch(e => console.error(`[Unified] orgId sync failed for ${localProj.id}:`, e));
+                    if (localOrgId && !remoteOrgId) {
+                        // Local has orgId, remote doesn't → push to remote
+                        console.log(`[Unified] Pushing orgId to remote for "${localProj.name}": → ${localOrgId}`);
+                        remoteService.updateProject(localProj.id, { orgId: localOrgId } as any, userId)
+                            .catch(e => console.error(`[Unified] orgId sync failed for ${localProj.id}:`, e));
+                    } else if (!localOrgId && remoteOrgId) {
+                        // Remote has orgId, local doesn't → pull from remote (DON'T overwrite remote!)
+                        console.log(`[Unified] Restoring orgId from remote for "${localProj.name}": → ${remoteOrgId}`);
+                        await localProjectService.updateProject(localProj.id, { orgId: remoteOrgId } as any, userId);
+                    } else if (localOrgId && remoteOrgId) {
+                        // Both have different orgIds → local wins (user explicitly changed it)
+                        console.log(`[Unified] Syncing orgId for "${localProj.name}": ${remoteOrgId} → ${localOrgId}`);
+                        remoteService.updateProject(localProj.id, { orgId: localOrgId } as any, userId)
+                            .catch(e => console.error(`[Unified] orgId sync failed for ${localProj.id}:`, e));
+                    }
                 }
 
-                // 2. Sync Scripts
+                // 2. Sync Scripts (Bidirectional)
                 const localScripts = await localProjectService.getScripts(localProj.id, userId);
                 const remoteScripts = await remoteService.getScripts(localProj.id, userId);
+                // Push local → remote
                 for (const script of localScripts) {
                     if (!remoteScripts.find(s => s.id === script.id)) {
                         console.log(`[Unified] Pushing script: ${script.name}`);
                         await remoteService.createScript(localProj.id, script, userId);
                     }
                 }
+                // Pull remote → local (RECOVERY)
+                for (const rScript of remoteScripts) {
+                    if (!localScripts.find(s => s.id === rScript.id)) {
+                        console.log(`[Unified] Pulling remote script to local: ${rScript.name || rScript.id}`);
+                        await localProjectService.createScript(localProj.id, rScript, userId);
+                    }
+                }
 
-                // 3. Sync Test Runs (Push Only - History)
-                const localRuns = await localProjectService.getTestRuns(localProj.id, userId); // Optimized call
-                // Assuming we don't want to fetch ALL remote runs every time, maybe just check existence?
-                // Or rely on atomic "create if not exists"? Firestore set() is idempotent if ID matches.
-                // Doing this for EVERY run every sync might be heavy?
-                // Optimization: Only sync runs from last 24h? Or check count?
-                // For now, let's skip rigorous run sync to avoid start lag, as user main complaint was startup speed.
-                // We'll trust Write-Through logic for new runs.
+                // 3. Sync Test Runs (Bidirectional)
+                const localRuns = await localProjectService.getTestRuns(localProj.id, userId);
+                const remoteRuns = await remoteService.getTestRuns(localProj.id);
+                // Push local → remote
+                for (const run of localRuns) {
+                    if (!remoteRuns.find((r: any) => r.id === run.id)) {
+                        await remoteService.createTestRun(localProj.id, run);
+                    }
+                }
+                // Pull remote → local (RECOVERY)
+                for (const rRun of remoteRuns) {
+                    if (!localRuns.find((r: any) => r.id === rRun.id)) {
+                        console.log(`[Unified] Pulling remote test run to local: ${rRun.id}`);
+                        await localProjectService.createTestRun(localProj.id, rRun);
+                    }
+                }
 
-                // User requirement: "When any new data add, in background all data add on firebase"
-                // Write-Through handles "new data".
-                // This Sync is for "recovery".
-
-                // 4. Sync Schedules
+                // 4. Sync Schedules (Bidirectional)
                 const localSchedules = await localProjectService.getSchedules(localProj.id, userId);
                 const remoteSchedules = await remoteService.getSchedules(localProj.id, userId);
                 for (const schedule of localSchedules) {
@@ -300,9 +337,45 @@ export class UnifiedProjectService {
                         await remoteService.createSchedule(localProj.id, schedule, userId);
                     }
                 }
+                for (const rSchedule of remoteSchedules) {
+                    if (!localSchedules.find(s => s.id === rSchedule.id)) {
+                        console.log(`[Unified] Pulling remote schedule to local: ${rSchedule.id}`);
+                        await localProjectService.createSchedule(localProj.id, rSchedule, userId);
+                    }
+                }
 
-                // 5. Sync Daily Data
-                // ... (Similar logic, keeping it light for now)
+                // 5. Sync Daily Data (Bidirectional — test cases, bugs, pages)
+                const localDailyData = await localProjectService.getDailyData(localProj.id, userId);
+                const remoteDailyData = await remoteService.getDailyData(localProj.id, userId);
+                // Push local → remote
+                for (const localDay of localDailyData) {
+                    if (!remoteDailyData.find((d: any) => d.id === localDay.id)) {
+                        console.log(`[Unified] Pushing daily data to remote: ${localDay.date || localDay.id}`);
+                        await remoteService.createDailyData(localProj.id, localDay, userId);
+                    }
+                }
+                // Pull remote → local (RECOVERY — this is the critical path for restoring test cases/bugs)
+                for (const rDay of remoteDailyData) {
+                    if (!localDailyData.find((d: any) => d.id === rDay.id)) {
+                        console.log(`[Unified] Pulling remote daily data to local: ${rDay.date || rDay.id}`);
+                        await localProjectService.createDailyData(localProj.id, rDay, userId);
+                    }
+                }
+
+                // 6. Sync Pages (Bidirectional)
+                const localPages = await localProjectService.getProjectPages(localProj.id, userId);
+                const remotePages = await remoteService.getProjectPages(localProj.id, userId);
+                for (const lPage of localPages) {
+                    if (!remotePages.find((p: any) => p.id === lPage.id)) {
+                        await remoteService.createProjectPage(localProj.id, lPage, userId);
+                    }
+                }
+                for (const rPage of remotePages) {
+                    if (!localPages.find((p: any) => p.id === rPage.id)) {
+                        console.log(`[Unified] Pulling remote page to local: ${rPage.name || rPage.id}`);
+                        await localProjectService.createProjectPage(localProj.id, rPage, userId);
+                    }
+                }
             }
             console.log('[Unified] Auto-Sync Complete');
         } catch (error) {
